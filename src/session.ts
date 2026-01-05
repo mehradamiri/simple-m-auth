@@ -1,19 +1,46 @@
-import type { Session, SessionWithToken } from './types.js';
+import type { Session, SessionWithToken, JwtPayload } from './types.js';
 import { loadConfig } from './config.js';
 import {
   generateSecureRandomString,
   hashSecret,
   constantTimeEqual,
   parseToken,
+  signJwt,
+  verifyJwt,
 } from './crypto.js';
 
 const DEFAULT_EXPIRES_IN = 60 * 60 * 24; // 24 hours
 const DEFAULT_COOKIE_NAME = 'session_token';
+const DEFAULT_JWT_EXPIRES_IN = 60 * 5; // 5 minutes (short-lived per Lucia Auth)
+
+/**
+ * Create a JWT for a session
+ */
+async function createJwtForSession(
+  sessionId: string,
+  userId: string,
+  secret: string,
+  expiresIn: number
+): Promise<string> {
+  const now = Math.floor(Date.now() / 1000);
+  const payload: JwtPayload = {
+    sessionId,
+    userId,
+    iat: now,
+    exp: now + expiresIn,
+  };
+  return signJwt(payload, secret);
+}
 
 /**
  * Create a new session for a user and set the cookie
+ * @param userId - The user ID to create a session for
+ * @param context - Optional context to pass to JWT handlers (e.g., request/response objects)
  */
-export async function createSession(userId: string): Promise<SessionWithToken> {
+export async function createSession<TContext = unknown>(
+  userId: string,
+  context?: TContext
+): Promise<SessionWithToken> {
   const config = await loadConfig();
 
   const id = generateSecureRandomString();
@@ -47,6 +74,13 @@ export async function createSession(userId: string): Promise<SessionWithToken> {
     path: '/',
     sameSite: 'lax',
   });
+
+  // Issue JWT if enabled
+  if (config.jwt) {
+    const jwtExpiresIn = config.jwt.expiresIn ?? DEFAULT_JWT_EXPIRES_IN;
+    const jwt = await createJwtForSession(id, userId, config.jwt.secret, jwtExpiresIn);
+    await config.jwt.setJwtToken(jwt, context);
+  }
 
   return session;
 }
@@ -95,10 +129,49 @@ export async function validateSession(): Promise<Session | null> {
 
 /**
  * Get the current user from session
- * Returns null if no valid session or user not found
+ * When JWT is enabled, first checks JWT for fast validation.
+ * If JWT is expired/invalid, falls back to session validation and refreshes JWT.
+ * Returns null if no valid session or user not found.
+ * @param context - Optional context to pass to JWT handlers (e.g., request/response objects)
  */
-export async function getUser<TUser = any>(): Promise<TUser | null> {
+export async function getUser<TUser = any, TContext = unknown>(
+  context?: TContext
+): Promise<TUser | null> {
   const config = await loadConfig();
+
+  // If JWT is enabled, try JWT first (fast path - no DB lookup)
+  if (config.jwt) {
+    const jwtToken = await config.jwt.getJwtToken(context);
+
+    if (jwtToken) {
+      const payload = await verifyJwt(jwtToken, config.jwt.secret);
+
+      if (payload) {
+        // JWT is valid, get user directly without session validation
+        return config.db.getUserById(payload.userId);
+      }
+    }
+
+    // JWT missing or invalid - fall back to session validation
+    const session = await validateSession();
+    if (!session) {
+      return null;
+    }
+
+    // Session is valid - refresh the JWT
+    const jwtExpiresIn = config.jwt.expiresIn ?? DEFAULT_JWT_EXPIRES_IN;
+    const newJwt = await createJwtForSession(
+      session.id,
+      session.userId,
+      config.jwt.secret,
+      jwtExpiresIn
+    );
+    await config.jwt.setJwtToken(newJwt, context);
+
+    return config.db.getUserById(session.userId);
+  }
+
+  // No JWT configured - use regular session validation
   const session = await validateSession();
 
   if (!session) {

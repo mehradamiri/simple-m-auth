@@ -4,6 +4,8 @@ export type {
   Session,
   SessionWithToken,
   CookieOptions,
+  JwtConfig,
+  JwtPayload,
 } from './types.js';
 
 // Session functions
@@ -23,4 +25,6 @@ export {
   generateSecureRandomString,
   hashSecret,
   constantTimeEqual,
+  signJwt,
+  verifyJwt,
 } from './crypto.js';

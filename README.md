@@ -136,6 +136,50 @@ async function logout() {
 }
 ```
 
+## JWT Support (Stateless Tokens)
+
+Enable short-lived JWTs for faster authentication. Based on [Lucia Auth stateless tokens](https://lucia-auth.com/sessions/stateless-tokens) principles:
+
+- JWTs are short-lived (5 minutes default)
+- `getUser()` checks JWT first (no DB lookup if valid)
+- Falls back to session validation if JWT expired
+- Auto-refreshes JWT when session is valid
+
+Add `jwt` config:
+
+```typescript
+export const authConfig: AuthConfig = {
+  db: { /* ... */ },
+  cookie: { /* ... */ },
+
+  jwt: {
+    secret: 'your-32-character-or-longer-secret-key',
+    expiresIn: 300, // 5 minutes (default)
+
+    getJwtToken: (ctx?) => {
+      // Get from Authorization header
+      return ctx?.req?.headers.get('Authorization')?.replace('Bearer ', '') ?? null;
+    },
+
+    setJwtToken: (token, ctx?) => {
+      // Set in response header
+      ctx?.res?.headers.set('Authorization', `Bearer ${token}`);
+    },
+  },
+};
+```
+
+Pass context to functions:
+
+```typescript
+// With context for JWT handlers
+const user = await getUser({ req, res });
+const session = await createSession(userId, { req, res });
+
+// Without JWT or when context not needed
+const user = await getUser();
+```
+
 ## Next.js Example
 
 ```typescript

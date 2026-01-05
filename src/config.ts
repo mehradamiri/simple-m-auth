@@ -72,6 +72,19 @@ function validateConfig(config: any): asserts config is AuthConfig {
   if (typeof config.cookie.delete !== 'function') {
     throw new Error('AuthConfig.cookie.delete must be a function');
   }
+
+  // JWT validation (optional, but if provided must be complete)
+  if (config.jwt) {
+    if (typeof config.jwt.secret !== 'string' || config.jwt.secret.length < 32) {
+      throw new Error('AuthConfig.jwt.secret must be a string of at least 32 characters');
+    }
+    if (typeof config.jwt.getJwtToken !== 'function') {
+      throw new Error('AuthConfig.jwt.getJwtToken must be a function');
+    }
+    if (typeof config.jwt.setJwtToken !== 'function') {
+      throw new Error('AuthConfig.jwt.setJwtToken must be a function');
+    }
+  }
 }
 
 // Allow manual config setting (useful for testing or non-standard setups)
