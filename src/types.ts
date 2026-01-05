@@ -50,7 +50,13 @@ export interface JwtConfig<TContext = unknown> {
   setJwtToken: (token: string, context?: TContext) => void | Promise<void>;
 }
 
-export interface AuthConfig<TUser = any> {
+export interface CookieConfig<TContext = unknown> {
+  set: (name: string, value: string, options: CookieOptions, context?: TContext) => void | Promise<void>;
+  get: (name: string, context?: TContext) => string | null | Promise<string | null>;
+  delete: (name: string, context?: TContext) => void | Promise<void>;
+}
+
+export interface AuthConfig<TUser = any, TContext = unknown> {
   db: {
     insertSession: (session: Session) => Promise<void>;
     getSessionById: (sessionId: string) => Promise<Session | null>;
@@ -58,11 +64,7 @@ export interface AuthConfig<TUser = any> {
     getUserById: (userId: string) => Promise<TUser | null>;
   };
 
-  cookie: {
-    set: (name: string, value: string, options: CookieOptions) => void | Promise<void>;
-    get: (name: string) => string | null | Promise<string | null>;
-    delete: (name: string) => void | Promise<void>;
-  };
+  cookie: CookieConfig<TContext>;
 
   /**
    * Enable stateless JWT tokens for faster user lookups.

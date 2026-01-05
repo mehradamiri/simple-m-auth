@@ -4,6 +4,7 @@ export type {
   Session,
   SessionWithToken,
   CookieOptions,
+  CookieConfig,
   JwtConfig,
   JwtPayload,
 } from './types.js';

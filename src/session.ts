@@ -73,7 +73,7 @@ export async function createSession<TContext = unknown>(
     secure: true,
     path: '/',
     sameSite: 'lax',
-  });
+  }, context);
 
   // Issue JWT if enabled
   if (config.jwt) {
@@ -88,13 +88,16 @@ export async function createSession<TContext = unknown>(
 /**
  * Validate the current session from cookie
  * Returns the session if valid, null otherwise
+ * @param context - Optional context to pass to cookie handlers
  */
-export async function validateSession(): Promise<Session | null> {
+export async function validateSession<TContext = unknown>(
+  context?: TContext
+): Promise<Session | null> {
   const config = await loadConfig();
   const cookieName = config.cookieName ?? DEFAULT_COOKIE_NAME;
   const expiresIn = config.sessionExpiresIn ?? DEFAULT_EXPIRES_IN;
 
-  const token = await config.cookie.get(cookieName);
+  const token = await config.cookie.get(cookieName, context);
   if (!token) {
     return null;
   }
@@ -114,7 +117,7 @@ export async function validateSession(): Promise<Session | null> {
   const sessionAge = now - session.createdAt.getTime();
   if (sessionAge >= expiresIn * 1000) {
     await config.db.deleteSession(session.id);
-    await config.cookie.delete(cookieName);
+    await config.cookie.delete(cookieName, context);
     return null;
   }
 
@@ -153,7 +156,7 @@ export async function getUser<TUser = any, TContext = unknown>(
     }
 
     // JWT missing or invalid - fall back to session validation
-    const session = await validateSession();
+    const session = await validateSession(context);
     if (!session) {
       return null;
     }
@@ -172,7 +175,7 @@ export async function getUser<TUser = any, TContext = unknown>(
   }
 
   // No JWT configured - use regular session validation
-  const session = await validateSession();
+  const session = await validateSession(context);
 
   if (!session) {
     return null;
@@ -183,12 +186,15 @@ export async function getUser<TUser = any, TContext = unknown>(
 
 /**
  * Delete the current session and clear cookie
+ * @param context - Optional context to pass to cookie handlers
  */
-export async function deleteSession(): Promise<void> {
+export async function deleteSession<TContext = unknown>(
+  context?: TContext
+): Promise<void> {
   const config = await loadConfig();
   const cookieName = config.cookieName ?? DEFAULT_COOKIE_NAME;
 
-  const token = await config.cookie.get(cookieName);
+  const token = await config.cookie.get(cookieName, context);
   if (!token) {
     return;
   }
@@ -198,7 +204,7 @@ export async function deleteSession(): Promise<void> {
     await config.db.deleteSession(parsed.id);
   }
 
-  await config.cookie.delete(cookieName);
+  await config.cookie.delete(cookieName, context);
 }
 
 /**

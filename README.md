@@ -52,20 +52,20 @@ export const authConfig: AuthConfig = {
   },
 
   cookie: {
-    // Example for Next.js App Router
-    set: async (name, value, options) => {
+    // Example for Next.js App Router (context not needed)
+    set: async (name, value, options, ctx?) => {
       const { cookies } = await import('next/headers');
       const cookieStore = await cookies();
       cookieStore.set(name, value, options);
     },
 
-    get: async (name) => {
+    get: async (name, ctx?) => {
       const { cookies } = await import('next/headers');
       const cookieStore = await cookies();
       return cookieStore.get(name)?.value ?? null;
     },
 
-    delete: async (name) => {
+    delete: async (name, ctx?) => {
       const { cookies } = await import('next/headers');
       const cookieStore = await cookies();
       cookieStore.delete(name);
@@ -106,6 +106,9 @@ model Session {
 
 ```typescript
 import { createSession, validateSession, getUser, deleteSession } from 'simple-m-auth';
+
+// All functions accept an optional context parameter for frameworks that need it
+// e.g., createSession(userId, ctx), getUser(ctx), validateSession(ctx), deleteSession(ctx)
 
 // Login - create session after verifying password
 async function login(userId: string) {
@@ -172,11 +175,14 @@ export const authConfig: AuthConfig = {
 Pass context to functions:
 
 ```typescript
-// With context for JWT handlers
-const user = await getUser({ req, res });
-const session = await createSession(userId, { req, res });
+// With context (for frameworks like Express, Hono, etc.)
+const ctx = { req, res };
+const session = await createSession(userId, ctx);
+const user = await getUser(ctx);
+const valid = await validateSession(ctx);
+await deleteSession(ctx);
 
-// Without JWT or when context not needed
+// Without context (Next.js App Router, or when using closures)
 const user = await getUser();
 ```
 
