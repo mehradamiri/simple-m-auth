@@ -1,6 +1,6 @@
 {
   "name": "simple-m-auth",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Dead simple session-based authentication. Just create auth.config.ts and go.",
   "type": "module",
   "main": "./dist/index.js",
