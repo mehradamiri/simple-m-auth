@@ -1,0 +1,37 @@
+{
+  "name": "simple-m-auth",
+  "version": "1.0.0",
+  "description": "Dead simple session-based authentication. Just create auth.config.ts and go.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "auth",
+    "authentication",
+    "session",
+    "lucia",
+    "simple"
+  ],
+  "author": "Mehrad Amiri <mehradamiri01@gmail.com>",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^25.0.3",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
